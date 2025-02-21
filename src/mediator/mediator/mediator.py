@@ -85,6 +85,7 @@ class Drone(Node):
 
     def execute_state(self):
         while True:
+            pass
 
 
     def set_trajectory(self, velocity, yawspeed, position):
@@ -141,6 +142,21 @@ class Mediator(Node):
 
         self.MainDrone = Drone(config["MainDronePrefix"], 1, self)
         self.SubDrones = []
+
+        self.prev_buttons = [False] * 6
+        self.takeoff_state = False
+        self.agent_state = 0     # 0->A, 1->B, 2->C, 3->D
+        self.control_state = 0
+
+        qos_profile = QoSProfile(
+            reliability=QoSReliabilityPolicy.BEST_EFFORT,
+            durability=QoSDurabilityPolicy.TRANSIENT_LOCAL,
+            history=QoSHistoryPolicy.KEEP_LAST,
+            depth=1
+        )
+
+        self.create_subscription(ESPCMD, '/esp_vel', self.__set_is_drone_online, qos_profile)
+
         for subdrone in config["SubDronePrefixes"]:
             self.SubDrones.append(Drone(subdrone, 1, self))
 
@@ -150,6 +166,22 @@ class Mediator(Node):
     def main_loop(self):
         while True:
             pass
+
+    def __set_esp_vel(self, msg):
+        espcmd_msg = ESPCMD()
+        espcmd_msg.vx = msg.vx
+        espcmd_msg.vy = msg.vy
+        espcmd_msg.vz = msg.vz
+        espcmd_msg.yaw = msg.yaw
+        espcmd_msg.buttons = msg.buttons
+
+        if not self.prev_buttons[0] and espcmd_msg.buttons[0]:
+            self.takeoff_state = 1
+        if not self.prev_buttons[1] and espcmd_msg.buttons[1]:
+            self.agent_state = (self.agent_state + 1) % 4
+        if not self.prev_buttons[2] and espcmd_msg.buttons[2]:
+            self.control_state = (self.control_state + 1) % 3
+
 
 
 def main(args):

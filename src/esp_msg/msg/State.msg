@@ -1,0 +1,3 @@
+bool takeoff_state
+int agent_state
+int control_state
