@@ -1,0 +1,4 @@
+main: drone0
+
+
+sub: [ drone1, drone2 ]
