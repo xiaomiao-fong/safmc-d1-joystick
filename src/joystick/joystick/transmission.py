@@ -52,7 +52,7 @@ class ESPTransmitter(Node):
         espcmd_msg.yaw = final_yaw_rate
 
         self.esp_vel_pub.publish(espcmd_msg)
-    
+ 
     def read_esp_data(self):
         self.processor.process_data()
         self.data_handler(self.processor.output_data)

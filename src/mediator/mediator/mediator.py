@@ -1,5 +1,6 @@
 import yaml
 import rclpy
+import os
 from .NEDCoordinate import NEDCoordinate
 from rclpy.node import Node
 from rclpy.qos import (QoSDurabilityPolicy, QoSHistoryPolicy,
@@ -7,8 +8,10 @@ from rclpy.qos import (QoSDurabilityPolicy, QoSHistoryPolicy,
 from px4_msgs.msg import (GotoSetpoint, OffboardControlMode, TrajectorySetpoint,
                           VehicleCommand, VehicleLocalPosition, VehicleStatus)
 
+from esp_msg.msg import ESPCMD
 
-class drone:
+
+class Drone(Node):
     status_config = {
         "IDOL": 0,
         "ARM": 1,
@@ -17,12 +20,12 @@ class drone:
         "ALTIUDE": 4,
     }
 
-    def __init__(self, name: str, id: int, node: Node):
+    def __init__(self, name: str, id: int):
         # Init some value
+        super.__init__("name")
         self.id = id
         self.state = "IDOL"
         self.name = name
-        self.node = node
         self.trajectory_setpoint_msg: TrajectorySetpoint = TrajectorySetpoint()
 
         self.is_armed = False
@@ -40,35 +43,23 @@ class drone:
         )
 
         # Subscriber
-        self.vehicle_local_position_sub = self.node.create_subscription(
+        self.vehicle_local_position_sub = self.create_subscription(
             VehicleLocalPosition,
             f"/{self.name}/out/vehicle_local_position",
             self.__set_vehicle_local_position,
             qos_profile)
 
-        self.vehicle_status_sub = self.node.create_subscription(
+        self.vehicle_status_sub = self.create_subscription(
             VehicleStatus,
             f"/{self.name}/out/vehicle_status",
             self.__set_vehicle_status,
             qos_profile
         )
 
-        # Publishers
-        self.vehicle_command_pub = self.node.create_publisher(
+        # Publishers for node on the drone
+        self.vehicle_status_pub = self.create_publisher(
             VehicleCommand,
-            f"/{self.name}/in/vehicle_command",
-            qos_profile
-        )
-
-        self.offboard_control_mode_pub = self.node.create_publisher(
-            OffboardControlMode,
-            f"/{self.name}/in/offboard_control_mode",
-            qos_profile
-        )
-
-        self.trajectory_setpoint_pub = self.node.create_publisher(
-            TrajectorySetpoint,
-            f"/{self.name}/in/trajectory_setpoint",
+            f"/{self.name}/in/vehicle_flight_status",
             qos_profile
         )
 
@@ -93,34 +84,8 @@ class drone:
         )
 
     def execute_state(self):
-        match self.state:
-            case "INIT":
+        while True:
 
-                self.get_logger().info(f"Armed status: {self.is_armed}")
-                self.get_logger().info(
-                    f"Vehicle timestamp: {self.vehicle_timestamp}")
-                self.get_logger().info(
-                    f"Preflight checks passed: {self.is_each_pre_flight_check_passed}")
-
-                if self.is_each_pre_flight_check_passed:
-                    self.get_logger().info("Drone is ready to arm and start offboard control.")
-                    self.activate_offboard_control_mode()
-                    # self.arm()
-                    # self.perform_takeoff()
-                    self.get_logger().info("Ok")
-                    # if(self.nav_state == VehicleStatus.NAVIGATION_STATE_OFFBOARD) : self.state = "TELEOP"
-                    self.state = "TELEOP"
-
-            case "TELEOP":
-                self.move_with_velocity()
-                pass
-
-            case str(x):
-                self.node.get_logger().warn(f"Invalide state {x}")
-
-            case _:
-                self.node.get_logger().error("Invalide state type, exit...")
-                exit(0)
 
     def set_trajectory(self, velocity, yawspeed, position):
         match velocity:
@@ -166,27 +131,33 @@ class drone:
         self.trajectory_setpoint_pub.publish(trajectory_setpoint_msg)
 
 
-class mediator(Node):
-    status_config = {
-        "IDOL": 0,
-        "ARM": 1,
-        "TELEOP": 2,
-        "WAIT_PICK": 3,
-        "ALTIUDE": 4,
-    }
-
+class Mediator(Node):
     def __init__(self, path: str):
-        self.config = yaml.load(path)
+        with open(path, "r") as f:
+            config = yaml.load(f)
+
         super.__init__("Mediator")
         self.get_logger().info("init mediator")
 
-    def main_loop():
-        pass
+        self.MainDrone = Drone(config["MainDronePrefix"], 1, self)
+        self.SubDrones = []
+        for subdrone in config["SubDronePrefixes"]:
+            self.SubDrones.append(Drone(subdrone, 1, self))
+
+        self.controlled_drone: Drone = self.MainDrone
+        self.main_loop()
+
+    def main_loop(self):
+        while True:
+            pass
 
 
-def main():
-    pass
+def main(args):
+    rclpy.init(args)
+    mediator = Mediator()
+    rclpy.spin(mediator)
+    rclpy.shutdown()
 
 
 if __name__ == "__main__":
-    main()
+    main(None)

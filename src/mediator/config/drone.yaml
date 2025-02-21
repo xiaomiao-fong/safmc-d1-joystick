@@ -1,4 +1,2 @@
-main: drone0
-
-
-sub: [ drone1, drone2 ]
+MainDronePrefix: drone0
+SubDronePrefixes: [ drone1, drone2 ]
