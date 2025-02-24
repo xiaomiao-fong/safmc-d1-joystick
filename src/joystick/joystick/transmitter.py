@@ -10,7 +10,7 @@ import time
 
 import rclpy.publisher
 from esp_msg.msg import ESPCMD
-from .data_processer import DataProcessor
+from .data_processor import DataProcessor
 
 MAX_SPEED = 2.0  # 限制最大速度 2 m/s
 
@@ -32,7 +32,7 @@ class ESPTransmitter(Node):
         self.processor = DataProcessor(self.ports)
 
         self.create_timer(0.01, self.read_esp_data)
-        self.esp_vel_pub : rclpy.publisher.Publisher = self.create_publisher(ESPCMD, "/esp_vel", qos_profile)
+        self.esp_values_pub : rclpy.publisher.Publisher = self.create_publisher(ESPCMD, "/esp_values", qos_profile)
         
     def data_handler(self, output_data):
         
@@ -52,7 +52,7 @@ class ESPTransmitter(Node):
         espcmd_msg.yaw = final_yaw_rate
         espcmd_msg.buttons = output_data[4]
 
-        self.esp_vel_pub.publish(espcmd_msg)
+        self.esp_values_pub.publish(espcmd_msg)
  
     def read_esp_data(self):
         self.processor.process_data()

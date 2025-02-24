@@ -35,9 +35,9 @@ class DataProcessor:
         output_messages = []
         
         if self.right_data:
-            buttons[0] = self.right_data.get("button2", False)
-            buttons[1] = self.right_data.get("button3", False)
-            buttons[2] = self.right_data.get("button4", False)
+            buttons[3] = self.right_data.get("button2", False)
+            buttons[4] = self.right_data.get("button3", False)
+            buttons[5] = self.right_data.get("button4", False)
             pitch = self.right_data.get("pitch", 0.0)
             roll = self.right_data.get("roll", 0.0)
             
@@ -48,9 +48,9 @@ class DataProcessor:
             #output_messages.append(f"跟隨系統: {self.follow_system}, 磁吸系統: {self.magnetic_system}")
         
         if self.left_data:
-            buttons[3] = self.right_data.get("button2", False)
-            buttons[4] = self.left_data.get("button3", False)
-            buttons[5] = self.left_data.get("button4", False)
+            buttons[0] = self.right_data.get("button2", False)
+            buttons[1] = self.left_data.get("button3", False)
+            buttons[2] = self.left_data.get("button4", False)
             pitch = self.left_data.get("pitch", 0.0)
             roll = self.left_data.get("roll", 0.0)
             

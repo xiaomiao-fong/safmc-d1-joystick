@@ -7,8 +7,9 @@ from rclpy.qos import (QoSDurabilityPolicy, QoSHistoryPolicy,
                        QoSProfile, QoSReliabilityPolicy)
 from px4_msgs.msg import (GotoSetpoint, OffboardControlMode, TrajectorySetpoint,
                           VehicleCommand, VehicleLocalPosition, VehicleStatus)
-
-from esp_msg.msg import ESPCMD
+from esp_msg.msg import ESPCMD, State, AgentStatus
+from std_msgs.msg import Bool, UInt32
+from mediator.constants import NUM_DRONES, NUM_BUTTONS
 
 
 class Drone(Node):
@@ -131,6 +132,10 @@ class Drone(Node):
 
         self.trajectory_setpoint_pub.publish(trajectory_setpoint_msg)
 
+def init_status_flags(size: int):
+    flags = [False] * (size + 1)
+    flags[0] = True
+    return flags
 
 class Mediator(Node):
     def __init__(self, path: str):
@@ -142,11 +147,15 @@ class Mediator(Node):
 
         self.MainDrone = Drone(config["MainDronePrefix"], 1, self)
         self.SubDrones = []
+        for subdrone in config["SubDronePrefixes"]:
+            self.SubDrones.append(Drone(subdrone, 1, self))
 
-        self.prev_buttons = [False] * 6
-        self.takeoff_state = False
-        self.agent_state = 0     # 0->A, 1->B, 2->C, 3->D
-        self.control_state = 0
+        self.is_drone_online = init_status_flags(NUM_DRONES)
+        self.prev_buttons = init_status_flags(NUM_BUTTONS)
+        self.__teleop_control = False
+        self.__magnet_control = False
+        self.__drop_control = False
+        self.__drone_control = 0
 
         qos_profile = QoSProfile(
             reliability=QoSReliabilityPolicy.BEST_EFFORT,
@@ -155,10 +164,23 @@ class Mediator(Node):
             depth=1
         )
 
-        self.create_subscription(ESPCMD, '/esp_vel', self.__set_is_drone_online, qos_profile)
+        # subscriber
+        self.create_subscription(ESPCMD, '/esp_values', self.__set_esp_values, qos_profile)
+        self.create_subscription(UInt32, '/mediator/online', self.__set_is_drone_online, qos_profile)
+        self.create_subscription(AgentStatus, '/mediator/status', self.__set_status, qos_profile)
 
-        for subdrone in config["SubDronePrefixes"]:
-            self.SubDrones.append(Drone(subdrone, 1, self))
+        # publisher
+        self.state_pub = self.create_publisher(State, f"/agent/state", qos_profile)
+        self.arm_pubs = [None] * (NUM_DRONES+1)
+        self.teleop_pubs = [None] * (NUM_DRONES+1)
+        self.drop_pubs = [None] * (NUM_DRONES+1)
+        self.track_pubs = [None] * (NUM_DRONES+1)
+
+        for drone_id in range(1, NUM_DRONES+1):
+            self.arm_pubs[drone_id] = self.create_publisher(Bool, f"/drone_{drone_id}/arm", qos_profile)
+            self.teleop_pubs[drone_id] = self.create_publisher(Bool, f"/drone_{drone_id}/teleop", qos_profile)
+            self.drop_pubs[drone_id] = self.create_publisher(Bool, f"/drone_{drone_id}/drop", qos_profile)
+            self.track_pubs[drone_id] = self.create_publisher(Bool, f"/drone_{drone_id}/track", qos_profile)
 
         self.controlled_drone: Drone = self.MainDrone
         self.main_loop()
@@ -167,7 +189,34 @@ class Mediator(Node):
         while True:
             pass
 
-    def __set_esp_vel(self, msg):
+    def __set_is_drone_online(self, msg: UInt32):
+        drone_id = msg.data
+        if not self.is_drone_online[drone_id]:
+            self.logger.ori.info(f"{drone_id} is online!")
+        self.is_drone_online[drone_id] = True
+        if not all(self.is_drone_online):
+            return
+        self.logger.info("sending arming command")
+        msg = Bool()
+        msg.data = True
+        self.arm_pubs[drone_id].publish(msg)
+
+    def __set_status(self, msg: AgentStatus):
+        drone_id = msg.drone_id
+
+        agent_local_position = Coordinate(
+            msg.point.x,
+            msg.point.y,
+            msg.point.z,
+        )
+
+        if(drone_id == self.__drone_control):
+            if(self.__teleop_control):
+                self.tele
+
+
+
+    def __set_esp_values(self, msg):
         espcmd_msg = ESPCMD()
         espcmd_msg.vx = msg.vx
         espcmd_msg.vy = msg.vy
@@ -176,14 +225,23 @@ class Mediator(Node):
         espcmd_msg.buttons = msg.buttons
 
         if not self.prev_buttons[0] and espcmd_msg.buttons[0]:
-            self.takeoff_state = 1
+            self.__teleop_control = True
         if not self.prev_buttons[1] and espcmd_msg.buttons[1]:
-            self.agent_state = (self.agent_state + 1) % 4
+            self.__magnet_control = True
         if not self.prev_buttons[2] and espcmd_msg.buttons[2]:
-            self.control_state = (self.control_state + 1) % 3
+            self.__drop_control = True
 
+        for i in range(NUM_DRONES):
+            if not self.prev_buttons[3+i] and espcmd_msg.buttons[3+i]:
+                self.__drone_control = i
+                self.prev_buttons = init_status_flags(NUM_BUTTONS)
+                self.__teleop_control = False
+                self.__magnet_control = False
+                self.__drop_control = False
 
+        self.prev_buttons = espcmd_msg.buttons
 
+        
 def main(args):
     rclpy.init(args)
     mediator = Mediator()
