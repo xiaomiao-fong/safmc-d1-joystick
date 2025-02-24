@@ -211,8 +211,17 @@ class Mediator(Node):
         )
 
         if(drone_id == self.__drone_control):
+            msg = Bool()
+            msg.data = True
             if(self.__teleop_control):
-                self.tele
+                self.teleop_pubs[drone_id].publish(True)
+            if(self.__magnet_control):
+                # TODO
+                pass
+            if(self.__drop_control):
+                pass
+            
+
 
 
 
