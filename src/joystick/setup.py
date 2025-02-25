@@ -20,7 +20,7 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            "joystick = joystick.transmission:main"
+            "joystick = joystick.transmitter:main"
         ],
     },
 )

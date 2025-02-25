@@ -1,7 +1,7 @@
 import yaml
 import rclpy
 import os
-from .NEDCoordinate import NEDCoordinate
+from .coordinate import Coordinate
 from rclpy.node import Node
 from rclpy.qos import (QoSDurabilityPolicy, QoSHistoryPolicy,
                        QoSProfile, QoSReliabilityPolicy)
@@ -14,26 +14,26 @@ from mediator.constants import NUM_DRONES, NUM_BUTTONS
 
 class Drone(Node):
     status_config = {
-        "IDOL": 0,
+        "IDLE": 0,
         "ARM": 1,
         "TELEOP": 2,
         "WAIT_PICK": 3,
-        "ALTIUDE": 4,
+        "ALTITUDE": 4,
     }
 
     def __init__(self, name: str, id: int):
         # Init some value
         super.__init__("name")
         self.id = id
-        self.state = "IDOL"
+        self.state = "IDLE"
         self.name = name
         self.trajectory_setpoint_msg: TrajectorySetpoint = TrajectorySetpoint()
 
         self.is_armed = False
         self.vehicle_timestamp = 1
         self.is_each_pre_flight_check_passed = False
-        self.start_position = NEDCoordinate(0, 0, 0)
-        self.local_position = NEDCoordinate(0, 0, 0)
+        self.start_position = Coordinate(0, 0, 0)
+        self.local_position = Coordinate(0, 0, 0)
         self.heading = 0.0
 
         qos_profile = QoSProfile(
@@ -78,7 +78,7 @@ class Drone(Node):
         vehicle_local_position_msg: VehicleLocalPosition
     ):
         self.heading = vehicle_local_position_msg.heading
-        self.local_position = NEDCoordinate(
+        self.local_position = Coordinate(
             x=vehicle_local_position_msg.x,
             y=vehicle_local_position_msg.y,
             z=vehicle_local_position_msg.z

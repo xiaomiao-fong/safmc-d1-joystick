@@ -1,3 +1,3 @@
 bool takeoff_state
-int agent_state
-int control_state
+uint32 agent_state
+uint32 control_state
