@@ -156,6 +156,10 @@ class Mediator(Node):
         self.__magnet_control = False
         self.__drop_control = False
         self.__drone_control = 0
+        self.__vx = 0.0
+        self.__vy = 0.0
+        self.__vz = 0.0
+        self.__yaw = 0.0
 
         qos_profile = QoSProfile(
             reliability=QoSReliabilityPolicy.BEST_EFFORT,
@@ -220,35 +224,34 @@ class Mediator(Node):
                 pass
             if(self.__drop_control):
                 pass
-            
+
 
 
 
 
     def __set_esp_values(self, msg):
-        espcmd_msg = ESPCMD()
-        espcmd_msg.vx = msg.vx
-        espcmd_msg.vy = msg.vy
-        espcmd_msg.vz = msg.vz
-        espcmd_msg.yaw = msg.yaw
-        espcmd_msg.buttons = msg.buttons
+        self.__vx = msg.vx
+        self.__vy = msg.vy
+        self.__vz = msg.vz
+        self.__yaw = msg.yaw
+        buttons = msg.buttons
 
-        if not self.prev_buttons[0] and espcmd_msg.buttons[0]:
+        if self.prev_buttons[0] ^ buttons[0]:
             self.__teleop_control = True
-        if not self.prev_buttons[1] and espcmd_msg.buttons[1]:
+        if self.prev_buttons[1] ^ buttons[1]:
             self.__magnet_control = True
-        if not self.prev_buttons[2] and espcmd_msg.buttons[2]:
+        if self.prev_buttons[2] ^ buttons[2]:
             self.__drop_control = True
 
         for i in range(NUM_DRONES):
-            if not self.prev_buttons[3+i] and espcmd_msg.buttons[3+i]:
+            if self.prev_buttons[3+i] ^ buttons[3+i]:
                 self.__drone_control = i
                 self.prev_buttons = init_status_flags(NUM_BUTTONS)
                 self.__teleop_control = False
                 self.__magnet_control = False
                 self.__drop_control = False
 
-        self.prev_buttons = espcmd_msg.buttons
+        self.prev_buttons = buttons
 
         
 def main(args):
