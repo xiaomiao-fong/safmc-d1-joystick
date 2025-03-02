@@ -1,0 +1,3 @@
+MainDronePrefix: drone0
+SubDronePrefixes: [ drone1, drone2 ]
+# should it be one base here?
