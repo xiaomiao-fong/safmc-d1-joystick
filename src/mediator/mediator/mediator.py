@@ -19,10 +19,10 @@ class Mediator(Node):
         super.__init__("Mediator")
         self.get_logger().info("init mediator")
 
-        self.MainDrone = Drone(config["MainDronePrefix"], 1, self)
+        self.MainDrone = Drone(1, self)
         self.SubDrones = []
-        for subdrone in config["SubDronePrefixes"]:
-            self.SubDrones.append(Drone(subdrone, 1, self)) # should the id be 2 and 3???
+        for i in range(2):
+            self.SubDrones.append(Drone(1, self)) # should the id be 2 and 3???
 
         self.controlled_drone: Drone = self.MainDrone
         self.execute()
