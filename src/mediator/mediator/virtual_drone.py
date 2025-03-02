@@ -1,4 +1,3 @@
-from .NEDCoordinate import NEDCoordinate
 from rclpy.node import Node
 from rclpy.qos import (QoSDurabilityPolicy, QoSHistoryPolicy,
                        QoSProfile, QoSReliabilityPolicy)
@@ -9,34 +8,17 @@ from esp_msg.msg import ESPCMD, AgentStatus
 from std_msgs.msg import Bool, UInt32
 
 class Drone():
-    status_config = {
-        "IDOL": 0,
-        "ARM": 1,
-        "TELEOP": 2,
-        "WAIT_PICK": 3,
-        "ALTIUDE": 4,
-    }
 
-    def __init__(self, name: str, id: int, node: Node):
+    def __init__(self, id: int, node: Node):
         # Init some value
-        super.__init__("name")
         self.id = id
-        self.state = "IDOL"
-        self.name = name
-        self.trajectory_setpoint_msg: TrajectorySetpoint = TrajectorySetpoint()
+        self.mediator_node = node
+        self.drone_prefix = f"/drone_{self.id}"
+        self.px4_prefix = f"/px4_{self.id}"
 
-        # I don't know should I keep the line below or not
-
-        # self.is_armed = False
-        # self.vehicle_timestamp = 1
-        # self.is_each_pre_flight_check_passed = False
-        # self.start_position = NEDCoordinate(0, 0, 0)
-        # self.local_position = NEDCoordinate(0, 0, 0)
-        # self.heading = 0.0
-
-        self.__arm_ready_signal: UInt32 = 0
-        self.__status_signal: AgentStatus = 0
-        self.__loaded_signal: UInt32 = 0
+        self.__arm_ready_signal: bool = False
+        self.__status_signal: AgentStatus = None
+        self.__loaded_signal: bool = False
 
         qos_profile = QoSProfile(
             reliability=QoSReliabilityPolicy.BEST_EFFORT,
@@ -46,53 +28,41 @@ class Drone():
         )
 
         # Subscriber for px4
-        self.vehicle_local_position_sub = node.create_subscription(
-            VehicleLocalPosition,
-            f"/{self.name}/out/vehicle_local_position",
-            self.__set_vehicle_local_position,
-            qos_profile
-        )
-
         self.vehicle_status_sub = node.create_subscription(
             VehicleStatus,
-            f"/{self.name}/out/vehicle_status",
+            f"{self.px4_prefix}/fmu/out/vehicle_status",
             self.__set_vehicle_status,
             qos_profile
         )
         # Subscriber for drone
         self.arm_ready_sub = node.create_subscription(
             UInt32,
-            f"/{self.name}/out/arm_ready",
+            f"{self.drone_prefix}/out/arm_ready",
             self.__set_arm_ready_signal,
             qos_profile
         )
 
         self.status_sub = node.create_subscription(
             AgentStatus,
-            f"/{self.name}/out/status",
-            self.__set_status_signal,
+            f"{self.drone_prefix}/out/status",
+            self.__set_status,
             qos_profile
         )
 
         self.loaded_sub = node.create_subscription(
             UInt32,
-            f"/{self.name}/out/loaded",
+            f"{self.drone_prefix}/out/loaded",
             self.__set_loaded_signal,
             qos_profile
         )
 
-        # Publishers for px4
-        self.vehicle_status_pub = self.create_publisher(
-            VehicleCommand,
-            f"/{self.name}/in/vehicle_flight_status",
-            qos_profile
-        )
         # Publishers for drone
-        self.arm_pub    = self.create_publisher(Bool, f"/{self.name}/in/arm", qos_profile)
-        self.teleop_pub = self.create_publisher(Bool, f"/{self.name}/in/teleop", qos_profile)
-        self.load_pub   = self.create_publisher(Bool, f"/{self.name}/in/load", qos_profile)
-        self.drop_pub   = self.create_publisher(Bool, f"/{self.name}/in/drop", qos_profile)
-        self.track_pub  = self.create_publisher(Bool, f"/{self.name}/in/track", qos_profile)
+        self.__arm_pub    = node.create_publisher(Bool, f"{self.drone_prefix}/in/arm", qos_profile)
+        self.__teleop_pub = node.create_publisher(Bool, f"{self.drone_prefix}/in/teleop", qos_profile)
+        self.__load_pub   = node.create_publisher(Bool, f"{self.drone_prefix}/in/load", qos_profile)
+        self.__hold_pub   = node.create_publisher(Bool, f"{self.drone_prefix}/in/hold", qos_profile)
+        self.__drop_pub   = node.create_publisher(Bool, f"{self.drone_prefix}/in/drop", qos_profile)
+        self.__track_pub  = node.create_publisher(Bool, f"{self.drone_prefix}/in/track", qos_profile)
 
     ### Properties ###
     @property
@@ -100,24 +70,48 @@ class Drone():
         return self.__arm_ready_signal
     
     @property
-    def received_status_signal(self) -> AgentStatus:
-        return self.__status_signal
-    
-    @property
     def received_loaded_signal(self) -> UInt32:
         return self.__loaded_signal
     
+    @property
+    def drone_status(self) -> AgentStatus:
+        return self.__status_signal
+    
+    @property
+    def drone_state(self) -> int:
+        return int(self.__status_signal.state)
+
     ### Setters ###
     def __set_arm_ready_signal(self, msg : UInt32) -> None:
-        self.__arm_ready_signal = msg.data
+        self.__arm_ready_signal = msg.data == self.id
     
-    def __set_status_signal(self, msg : AgentStatus) -> None:
-        self.__status_signal = msg.data
+    def __set_status(self, msg : AgentStatus) -> None:
+        self.__status_signal = msg
 
     def __set_loaded_signal(self, msg : UInt32) -> None:
-        self.__loaded_signal = msg.data
+        self.__loaded_signal = msg.data == self.id
+
+    ### signal ###
+
+    def arm(self):
+        self.__arm_pub.publish(Bool({"data" : True}))
+
+    def teleop(self):
+        self.__teleop_pub.publish(Bool({"data" : True}))
+
+    def load(self):
+        self.__load_pub.publish(Bool({"data" : True}))
+
+    def hold(self):
+        self.__hold_pub.publish(Bool({"data" : True}))
+
+    def drop(self):
+        self.__drop_pub.publish(Bool({"data" : True}))
+
+    def track(self):
+        self.__track_pub.publish(Bool({"data" : True}))
     
-    # drone_id
+    # util function
     def __get_drone_id_msg(self) -> UInt32:
         uint32_msg = UInt32()
         uint32_msg.data = self.id

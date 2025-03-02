@@ -1,7 +1,6 @@
 import yaml
 import rclpy
 import os
-from .NEDCoordinate import NEDCoordinate
 from rclpy.node import Node
 from rclpy.qos import (QoSDurabilityPolicy, QoSHistoryPolicy,
                        QoSProfile, QoSReliabilityPolicy)
@@ -12,6 +11,7 @@ from esp_msg.msg import ESPCMD
 from virtual_drone import Drone
 
 class Mediator(Node):
+
     def __init__(self, path: str):
         with open(path, "r") as f:
             config = yaml.load(f)
@@ -25,11 +25,12 @@ class Mediator(Node):
             self.SubDrones.append(Drone(subdrone, 1, self)) # should the id be 2 and 3???
 
         self.controlled_drone: Drone = self.MainDrone
-        self.main_loop()
+        self.execute()
 
-    def main_loop(self):
-        while True:
-            pass
+        self.create_timer(0.03, self.execute)
+
+    def execute(self):
+        pass
 
 
 def main(args):
