@@ -50,6 +50,7 @@ class ESPTransmitter(Node):
         espcmd_msg.vy = final_vy
         espcmd_msg.vz = final_vz
         espcmd_msg.yaw = final_yaw_rate
+        espcmd_msg.buttons = output_data[4]
 
         self.esp_vel_pub.publish(espcmd_msg)
  
