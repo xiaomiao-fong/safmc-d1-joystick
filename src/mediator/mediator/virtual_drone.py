@@ -70,7 +70,7 @@ class Drone():
         return self.__arm_ready_signal
     
     @property
-    def received_loaded_signal(self) -> UInt32:
+    def received_loaded_signal(self) -> bool:
         return self.__loaded_signal
     
     @property

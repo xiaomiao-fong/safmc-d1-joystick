@@ -36,18 +36,21 @@ class Mediator(Node):
 
         self.MainDrone = Drone(1, self)
         self.SubDrones = []
-        for i in range(2,4):
-            self.SubDrones.append(Drone(i, self)) # should the id be 2 and 3???
+        for i in range(2, 4):
+            # should the id be 2 and 3???
+            self.SubDrones.append(Drone(i, self))
 
         self.controlled_drone: Drone = self.MainDrone
-
 
         self.prev_buttons = [False] * NUM_BUTTONS
         self.__teleop_btn_signal = False
         self.__magnet_btn_signal = False
         self.__drop_btn_signal = False
         self.__current_drone = 1
+
+        # for FSM
         self.state = MediatorEnum.IDLE
+        self.__msg_in = False
 
         qos_profile = QoSProfile(
             reliability=QoSReliabilityPolicy.BEST_EFFORT,
@@ -57,9 +60,19 @@ class Mediator(Node):
         )
 
         # subscriber
-        self.create_subscription(ESPCMD, '/esp_values', self.__set_esp_values, qos_profile)
+        self.create_subscription(
+            ESPCMD, '/esp_values', self.__set_esp_values, qos_profile)
 
         self.create_timer(0.01, self.execute)
+
+    def is_all_loaded(self) -> bool:
+        is_loaded = self.MainDrone.received_loaded_signal
+        for drone in self.SubDrones:
+            if is_loaded is False:
+                break
+            is_loaded = is_loaded and drone.received_loaded_signal
+
+        return is_loaded
 
     def execute(self):
         """
@@ -78,17 +91,30 @@ class Mediator(Node):
         """
         match self.state:
             case MediatorEnum.IDLE:
-                pass
-                # TODO waiting for
+                # waiting for esp32 signal
+                if self.__msg_in is True:
+                    self.state = MediatorEnum.FETCHING
+                    return
+
             case MediatorEnum.FETCHING:
                 # TODO this is fetching
-                pass
+                if self.is_all_loaded() is True:
+                    self.state = MediatorEnum.ALIGNED
+                    return
+
+                if self.__teleop_btn_signal is True:
+                    self.controlled_drone.teleop()
+                if self.__magnet_btn_signal is True:
+                    self.controlled_drone.load()
+
             case MediatorEnum.ALIGNED:
                 # TODO This is aligned
                 pass
+
             case MediatorEnum.ERROR:
                 # TODO This is error handling.
                 pass
+
             case _:
                 self.get_logger()\
                     .error(
@@ -96,14 +122,15 @@ class Mediator(Node):
                         you should use MediatorEnum to represent type"
                 )
                 exit(1)
-        pass
+
+        self.__msg_in = False
 
     def __set_esp_values(self, msg):
         buttons = msg.buttons
 
         self.__teleop_btn_signal = self.prev_buttons[0] ^ buttons[0]
         self.__magnet_btn_signal = self.prev_buttons[1] ^ buttons[1]
-        self.__drop_btn_signal = self.prev_buttons[2] ^ buttons[2]             
+        self.__drop_btn_signal = self.prev_buttons[2] ^ buttons[2]
 
         for i in range(NUM_DRONES):
             if self.prev_buttons[3+i] ^ buttons[3+i]:
@@ -116,6 +143,7 @@ class Mediator(Node):
         # self.execute()  # TODO Is there a better way
 
         self.prev_buttons = buttons
+        self.__msg_in = True
 
 
 def main(args):
