@@ -8,6 +8,8 @@ from esp_msg.msg import ESPCMD, AgentStatus
 from std_msgs.msg import Bool, UInt32
 
 class Drone():
+    def __str__(self):
+        return self.drone_prefix
 
     def __init__(self, id: int, node: Node):
         # Init some value
@@ -80,6 +82,11 @@ class Drone():
     @property
     def drone_state(self) -> int:
         return int(self.__status_signal.state)
+
+    # TODO Track is not implemented
+    @property
+    def drone_track(self) -> bool:
+        return self.__track_signal
 
     ### Setters ###
     def __set_arm_ready_signal(self, msg : UInt32) -> None:

@@ -65,6 +65,12 @@ class Mediator(Node):
 
         self.create_timer(0.01, self.execute)
 
+    def is_all_tracked(self) -> bool:
+        is_tracked = True
+        for drone in self.SubDrones:
+            is_tracked = is_tracked and drone.drone_track
+        return is_tracked
+
     def is_all_loaded(self) -> bool:
         is_loaded = self.MainDrone.received_loaded_signal
         for drone in self.SubDrones:
@@ -84,7 +90,7 @@ class Mediator(Node):
            Drones will receive instructions one by one and wait in place.
         aligned:
            This is the aligned state.
-           The sub-drones will follow the main drone.
+           The sub-drones will follow the main drone after track flag is set.
         error:
             This is error handling state. After this state,
             the drone should return to its original state
@@ -109,7 +115,16 @@ class Mediator(Node):
 
             case MediatorEnum.ALIGNED:
                 # TODO This is aligned
-                pass
+                if self.is_all_tracked() is False:
+                    not_track = []
+                    self.MainDrone.hold()
+                    for drone in self.SubDrones:
+                        if drone.drone_track is False:
+                            not_track.append(drone)
+                        drone.track()
+                    self.get_logger().info(f"sub-drone {not_track} are track")
+                else if self.MainDrone == self.controlled_drone and self.teleop_btn_signal is True:
+                    self.MainDrone.teleop()
 
             case MediatorEnum.ERROR:
                 # TODO This is error handling.
