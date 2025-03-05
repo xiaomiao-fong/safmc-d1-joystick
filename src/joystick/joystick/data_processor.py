@@ -12,7 +12,7 @@ class DataProcessor:
         self.drop_payload_system = False
         self.left_data = None
         self.right_data = None
-        self.output_data = (0.0, 0.0, 0.0, 0.0)
+        self.output_data = (0.0, 0.0, 0.0, 0.0, [False] * 6)
     
     def fetch_latest_data(self):
         for port, handler in self.handlers.items():
@@ -30,34 +30,33 @@ class DataProcessor:
         self.right_data = self.latest_data.get("right")
         
         vx, vy, vz, yaw_rate = 0.0, 0.0, 0.0, 0.0
+        buttons = [False] * 6
         
         output_messages = []
         
         if self.right_data:
-            button3 = self.right_data.get("button3", False)
-            button4 = self.right_data.get("button4", False)
+            buttons[3] = self.right_data.get("button2", False)
+            buttons[4] = self.right_data.get("button3", False)
+            buttons[5] = self.right_data.get("button4", False)
             pitch = self.right_data.get("pitch", 0.0)
             roll = self.right_data.get("roll", 0.0)
-            
-            self.follow_system = button3
-            self.magnetic_system = button4
+
             vx = self.custom_angle_to_speed(roll)
             vy = self.custom_angle_to_speed(pitch)
             #output_messages.append(f"跟隨系統: {self.follow_system}, 磁吸系統: {self.magnetic_system}")
         
         if self.left_data:
-            button3 = self.left_data.get("button3", False)
-            button4 = self.left_data.get("button4", False)
+            buttons[0] = self.right_data.get("button2", False)
+            buttons[1] = self.left_data.get("button3", False)
+            buttons[2] = self.left_data.get("button4", False)
             pitch = self.left_data.get("pitch", 0.0)
             roll = self.left_data.get("roll", 0.0)
-            
-            self.descend_system = button3
-            self.drop_payload_system = button4
+
             yaw_rate = self.custom_angle_to_speed(pitch)
             vz = self.custom_angle_to_speed(roll)
             #output_messages.append(f"下降系統: {self.descend_system}, 丟payload系統: {self.drop_payload_system}")
         
-        self.output_data = (vx, vy, vz, yaw_rate)
+        self.output_data = (vx, vy, vz, yaw_rate, buttons)
         output_messages.append(f"飛行指令: vx={vx:.3f}, vy={vy:.3f}, vz={vz:.3f}, yaw_rate={yaw_rate:.3f}")
         
         #print("\n".join(output_messages))

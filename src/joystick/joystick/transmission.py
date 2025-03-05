@@ -10,7 +10,7 @@ import time
 
 import rclpy.publisher
 from esp_msg.msg import ESPCMD
-from .data_processer import DataProcessor
+from .data_processor import DataProcessor
 
 MAX_SPEED = 2.0  # 限制最大速度 2 m/s
 
@@ -50,6 +50,7 @@ class ESPTransmitter(Node):
         espcmd_msg.vy = final_vy
         espcmd_msg.vz = final_vz
         espcmd_msg.yaw = final_yaw_rate
+        espcmd_msg.buttons = output_data[4]
 
         self.esp_vel_pub.publish(espcmd_msg)
  
