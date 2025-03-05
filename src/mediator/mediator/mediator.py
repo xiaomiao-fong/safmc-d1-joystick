@@ -1,6 +1,9 @@
 import yaml
 import rclpy
 import os
+
+from enum import Enum, auto, unique
+
 from rclpy.node import Node
 from rclpy.qos import (QoSDurabilityPolicy, QoSHistoryPolicy,
                        QoSProfile, QoSReliabilityPolicy)
@@ -10,6 +13,19 @@ from px4_msgs.msg import (GotoSetpoint, OffboardControlMode, TrajectorySetpoint,
 from esp_msg.msg import ESPCMD
 from virtual_drone import Drone
 from mediator.constants import NUM_DRONES, NUM_BUTTONS
+
+
+@unique
+class MediatorEnum(Enum):
+    """
+    This is enum, auto function from imported built-in
+    class enum will auto asigned unique number to the item
+    """
+    IDLE = auto()
+    FETCHING = auto()
+    ALIGNED = auto()
+    ERROR = auto()
+
 
 class Mediator(Node):
 
@@ -31,6 +47,7 @@ class Mediator(Node):
         self.__magnet_btn_signal = False
         self.__drop_btn_signal = False
         self.__current_drone = 1
+        self.state = MediatorEnum.IDLE
 
         qos_profile = QoSProfile(
             reliability=QoSReliabilityPolicy.BEST_EFFORT,
@@ -42,7 +59,43 @@ class Mediator(Node):
         # subscriber
         self.create_subscription(ESPCMD, '/esp_values', self.__set_esp_values, qos_profile)
 
+        self.create_timer(0.01, self.execute)
+
     def execute(self):
+        """
+        There are mediator states:
+        idle:
+           This state waits for any signal and then enters the fetching state.
+        fetching:
+           This is the fetching state.
+           Drones will receive instructions one by one and wait in place.
+        aligned:
+           This is the aligned state.
+           The sub-drones will follow the main drone.
+        error:
+            This is error handling state. After this state,
+            the drone should return to its original state
+        """
+        match self.state:
+            case MediatorEnum.IDLE:
+                pass
+                # TODO waiting for
+            case MediatorEnum.FETCHING:
+                # TODO this is fetching
+                pass
+            case MediatorEnum.ALIGNED:
+                # TODO This is aligned
+                pass
+            case MediatorEnum.ERROR:
+                # TODO This is error handling.
+                pass
+            case _:
+                self.get_logger()\
+                    .error(
+                        f"wrong type, {self.state},\
+                        you should use MediatorEnum to represent type"
+                )
+                exit(1)
         pass
 
     def __set_esp_values(self, msg):
@@ -60,7 +113,7 @@ class Mediator(Node):
                 self.__magnet_btn_signal = False
                 self.__drop_btn_signal = False
 
-        self.execute() # TODO Is there a better way
+        # self.execute()  # TODO Is there a better way
 
         self.prev_buttons = buttons
 
