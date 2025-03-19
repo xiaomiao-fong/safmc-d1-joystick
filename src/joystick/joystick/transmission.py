@@ -43,7 +43,7 @@ class ESPTransmitter(Node):
         final_vz = output_data[2]
         final_yaw_rate = output_data[3]
 
-        print(f"飛行指令: vx={final_vx:5.2f}, vy={final_vy:5.2f}, vz={final_vz:5.2f}, yaw_rate={final_yaw_rate:5.2f}", end = '\r')
+        print(f"飛行指令: vx={final_vx:5.2f}, vy={final_vy:5.2f}, vz={final_vz:5.2f}, yaw_rate={final_yaw_rate:5.2f}, buttons={output_data[4]}", end = '\r')
 
         espcmd_msg = ESPCMD()
         espcmd_msg.vx = final_vx

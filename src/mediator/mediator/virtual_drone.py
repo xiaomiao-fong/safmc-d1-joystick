@@ -27,42 +27,43 @@ class Drone():
             depth=1
         )
 
-        # Subscriber for px4
-        self.vehicle_status_sub = node.create_subscription(
-            VehicleStatus,
-            f"{self.px4_prefix}/fmu/out/vehicle_status",
-            self.__set_vehicle_status,
-            qos_profile
-        )
+        # # Subscriber for px4
+        # self.vehicle_status_sub = node.create_subscription(
+        #     VehicleStatus,
+        #     f"{self.px4_prefix}/fmu/out/vehicle_status",
+        #     self.__set_vehicle_status,
+        #     qos_profile
+        # )
         # Subscriber for drone
         self.arm_ready_sub = node.create_subscription(
             UInt32,
-            f"{self.drone_prefix}/out/arm_ready",
+            f"{self.px4_prefix}/out/arm_ready",
             self.__set_arm_ready_signal,
             qos_profile
         )
 
         self.status_sub = node.create_subscription(
             AgentStatus,
-            f"{self.drone_prefix}/out/status",
+            f"{self.px4_prefix}/out/status",
             self.__set_status,
             qos_profile
         )
 
         self.loaded_sub = node.create_subscription(
             UInt32,
-            f"{self.drone_prefix}/out/loaded",
+            f"{self.px4_prefix}/out/loaded",
             self.__set_loaded_signal,
             qos_profile
         )
 
         # Publishers for drone
-        self.__arm_pub    = node.create_publisher(Bool, f"{self.drone_prefix}/in/arm", qos_profile)
-        self.__teleop_pub = node.create_publisher(Bool, f"{self.drone_prefix}/in/teleop", qos_profile)
-        self.__load_pub   = node.create_publisher(Bool, f"{self.drone_prefix}/in/load", qos_profile)
-        self.__hold_pub   = node.create_publisher(Bool, f"{self.drone_prefix}/in/hold", qos_profile)
-        self.__drop_pub   = node.create_publisher(Bool, f"{self.drone_prefix}/in/drop", qos_profile)
-        self.__track_pub  = node.create_publisher(Bool, f"{self.drone_prefix}/in/track", qos_profile)
+        self.__idle_pub   = node.create_publisher(Bool, f"{self.px4_prefix}/in/idle", qos_profile)
+        self.__arm_pub    = node.create_publisher(Bool, f"{self.px4_prefix}/in/arm", qos_profile)
+        self.__teleop_pub = node.create_publisher(Bool, f"{self.px4_prefix}/in/teleop", qos_profile)
+        self.__load_pub   = node.create_publisher(Bool, f"{self.px4_prefix}/in/load", qos_profile)
+        self.__hold_pub   = node.create_publisher(Bool, f"{self.px4_prefix}/in/hold", qos_profile)
+        self.__drop_pub   = node.create_publisher(Bool, f"{self.px4_prefix}/in/drop", qos_profile)
+        self.__track_pub  = node.create_publisher(Bool, f"{self.px4_prefix}/in/track", qos_profile)
 
     ### Properties ###
     @property
@@ -79,6 +80,7 @@ class Drone():
     
     @property
     def drone_state(self) -> int:
+        if self.__status_signal is None: return 8
         return int(self.__status_signal.state)
 
     ### Setters ###
@@ -94,22 +96,25 @@ class Drone():
     ### signal ###
 
     def arm(self):
-        self.__arm_pub.publish(Bool({"data" : True}))
+        self.__arm_pub.publish(Bool(**{"data" : True}))
 
     def teleop(self):
-        self.__teleop_pub.publish(Bool({"data" : True}))
+        self.__teleop_pub.publish(Bool(**{"data" : True}))
 
     def load(self):
-        self.__load_pub.publish(Bool({"data" : True}))
+        self.__load_pub.publish(Bool(**{"data" : True}))
 
     def hold(self):
-        self.__hold_pub.publish(Bool({"data" : True}))
+        self.__hold_pub.publish(Bool(**{"data" : True}))
 
     def drop(self):
-        self.__drop_pub.publish(Bool({"data" : True}))
+        self.__drop_pub.publish(Bool(**{"data" : True}))
 
     def track(self):
-        self.__track_pub.publish(Bool({"data" : True}))
+        self.__track_pub.publish(Bool(**{"data" : True}))
+
+    def idle(self):
+        self.__idle_pub.publish(Bool(**{"data" : True}))
     
     # util function
     def __get_drone_id_msg(self) -> UInt32:

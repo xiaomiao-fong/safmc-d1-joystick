@@ -20,6 +20,7 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
+            'd1_mediator=mediator.mediator:main'
         ],
     },
 )
