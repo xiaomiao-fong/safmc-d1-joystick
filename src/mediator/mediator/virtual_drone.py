@@ -142,7 +142,7 @@ class Drone():
         msg = ChannelOverride()
 
         msg.channels = [-1,-1,-1,-1,2000]
-        msg.duration = 1000
+        msg.duration = 750
 
         msg.bypass_safety = True
         self.__target_publisher.publish(msg)
@@ -152,7 +152,7 @@ class Drone():
 
         print(velocities)
         msg.channels = [int(velocities[0]),int(velocities[1]),int(velocities[2]),int(velocities[3])]
-        msg.duration = 1000
+        msg.duration = 750
 
         self.__target_publisher.publish(msg)
 
